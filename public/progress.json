@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "scales": {
+    "C": { "status": "mastered" },
+    "Am": { "status": "mastered" },
+    "G": { "status": "mastered" },
+    "Em": { "status": "in-progress", "form": "harmonic" },
+    "D": { "status": "mastered" },
+    "Bm": { "status": "in-progress", "form": "harmonic" },
+    "A": { "status": "not-started" },
+    "F#m": { "status": "not-started" },
+    "E": { "status": "not-started" },
+    "C#m": { "status": "not-started" },
+    "B": { "status": "not-started" },
+    "G#m": { "status": "not-started" },
+    "F#": { "status": "not-started" },
+    "D#m": { "status": "not-started" },
+    "Db": { "status": "not-started" },
+    "Bbm": { "status": "not-started" },
+    "Ab": { "status": "not-started" },
+    "Fm": { "status": "not-started" },
+    "Eb": { "status": "not-started" },
+    "Cm": { "status": "not-started" },
+    "Bb": { "status": "not-started" },
+    "Gm": { "status": "not-started" },
+    "F": { "status": "not-started" },
+    "Dm": { "status": "not-started" }
+  },
+  "pieces": [],
+  "resources": []
+}
