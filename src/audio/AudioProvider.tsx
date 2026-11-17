@@ -8,7 +8,7 @@ interface AudioContextValue {
   timbre: 'synth' | 'piano'
   toggleMuted: () => void
   setVolume: (volume: number) => void
-  unlock: () => void
+  unlock: () => Promise<boolean>
   playPreview: (midi: number) => void
   playScaleNote: (midi: number, when: number, duration: number) => void
   stopAll: () => void
@@ -22,7 +22,9 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState(() => readSnapshot(engine))
 
   useEffect(() => {
-    const unlock = () => getPiano().unlock()
+    const unlock = () => {
+      void getPiano().unlock()
+    }
     window.addEventListener('pointerdown', unlock)
     window.addEventListener('keydown', unlock)
     const unsubscribe = subscribePiano(() => setSnapshot(readSnapshot(getPiano())))

@@ -110,8 +110,13 @@ p { margin: 0; }
 
 .unlock-hint {
   margin: 0 0 0.7rem;
-  color: var(--muted);
-  font-size: 0.88rem;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.92rem;
+  font-weight: 640;
 }
 
 .tabs { display: flex; gap: 0.4rem; margin-bottom: 1rem; }

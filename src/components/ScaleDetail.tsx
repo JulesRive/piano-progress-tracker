@@ -78,35 +78,37 @@ export function ScaleDetail({ scaleId, entry, onStatus, onForm, onNotes, onPract
   }
 
   const play = () => {
-    audio.unlock()
-    stop()
-    const token = tokenRef.current
-    const start = audio.currentTime()
-    if (start === null) return
-    const interval = 60 / bpm
-    sequence.forEach((tone, index) => {
-      audio.playScaleNote(tone.midi, start + index * interval, interval * 0.92)
-    })
-    setPlaying(true)
-    let shown = -1
-    const tick = () => {
-      if (tokenRef.current !== token) return
-      const now = audio.currentTime()
-      if (now === null) return
-      const index = Math.floor((now - start) / interval + 0.001)
-      if (index >= sequence.length) {
-        setPlaying(false)
-        setActive(null)
-        return
-      }
-      if (index !== shown) {
-        shown = index
-        const tone = sequence[Math.max(0, index)]
-        setActive({ index, midi: tone.midi, finger: tone.finger, label: tone.label, french: tone.french })
+    void audio.unlock().then((running) => {
+      if (!running) return
+      stop()
+      const token = tokenRef.current
+      const start = audio.currentTime()
+      if (start === null) return
+      const interval = 60 / bpm
+      sequence.forEach((tone, index) => {
+        audio.playScaleNote(tone.midi, start + index * interval, interval * 0.92)
+      })
+      setPlaying(true)
+      let shown = -1
+      const tick = () => {
+        if (tokenRef.current !== token) return
+        const now = audio.currentTime()
+        if (now === null) return
+        const index = Math.floor((now - start) / interval + 0.001)
+        if (index >= sequence.length) {
+          setPlaying(false)
+          setActive(null)
+          return
+        }
+        if (index !== shown) {
+          shown = index
+          const tone = sequence[Math.max(0, index)]
+          setActive({ index, midi: tone.midi, finger: tone.finger, label: tone.label, french: tone.french })
+        }
+        window.requestAnimationFrame(tick)
       }
       window.requestAnimationFrame(tick)
-    }
-    window.requestAnimationFrame(tick)
+    })
   }
 
   return (

@@ -59,7 +59,10 @@ export function CircleOfFifths({ progress, selectedId, onSelect }: CircleProps) 
 
   const playTonic = (scale: ScaleDef) => {
     cancelHover()
-    audio.playPreview(60 + tonicOf(scale).pc)
+    const midi = 60 + tonicOf(scale).pc
+    void audio.unlock().then((running) => {
+      if (running) audio.playPreview(midi)
+    })
   }
 
   const focusScale = (id: string) => {

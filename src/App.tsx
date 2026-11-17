@@ -63,10 +63,21 @@ export default function App() {
             <button
               type="button"
               className="icon-button"
-              aria-pressed={audio.muted}
-              aria-label={audio.muted ? 'Unmute' : 'Mute'}
-              title={audio.muted ? 'Unmute' : audio.timbre === 'piano' ? 'Mute · acoustic grand' : 'Mute · piano synth'}
-              onClick={() => audio.toggleMuted()}
+              aria-pressed={audio.unlocked ? audio.muted : false}
+              aria-label={audio.unlocked ? (audio.muted ? 'Unmute' : 'Mute') : 'Enable sound'}
+              title={
+                audio.unlocked
+                  ? audio.muted
+                    ? 'Unmute'
+                    : audio.timbre === 'piano'
+                      ? 'Mute · acoustic grand'
+                      : 'Mute · piano synth'
+                  : 'Enable sound'
+              }
+              onClick={() => {
+                if (!audio.unlocked) void audio.unlock()
+                else audio.toggleMuted()
+              }}
             >
               {audio.muted || audio.volume === 0 ? <SpeakerOff /> : <SpeakerOn />}
             </button>
@@ -93,7 +104,11 @@ export default function App() {
           </button>
         </div>
       </header>
-      {!audio.unlocked ? <p className="unlock-hint">Tap anywhere to enable sound.</p> : null}
+      {!audio.unlocked ? (
+        <button type="button" className="unlock-hint" onClick={() => void audio.unlock()}>
+          Enable sound
+        </button>
+      ) : null}
 
       <nav className="tabs" aria-label="Sections">
         {(

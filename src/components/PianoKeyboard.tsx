@@ -48,7 +48,9 @@ export function PianoKeyboard({ startMidi, endMidi, highlights, activeMidi }: Pi
 
   const playNow = (midi: number) => {
     cancel()
-    audio.playPreview(midi)
+    void audio.unlock().then((running) => {
+      if (running) audio.playPreview(midi)
+    })
   }
 
   const schedule = (midi: number) => {

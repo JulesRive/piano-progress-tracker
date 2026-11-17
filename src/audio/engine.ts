@@ -8,8 +8,13 @@ export interface AudioPrefs {
 type NoteHandle = { stop: (when?: number) => void }
 
 interface SoundfontPlayer {
-  play: (note: number | string, when?: number, options?: { duration?: number; gain?: number }) => NoteHandle
+  play: (
+    note: number | string,
+    when?: number,
+    options?: { duration?: number; gain?: number },
+  ) => NoteHandle | undefined
   stop: (when?: number) => void
+  buffers?: Record<string, unknown>
 }
 
 type InstrumentFactory = (
@@ -19,12 +24,25 @@ type InstrumentFactory = (
     soundfont?: string
     format?: string
     destination?: AudioNode
-    notes?: number[]
+    notes?: Array<string | number>
     gain?: number
   },
 ) => Promise<SoundfontPlayer>
 
-const SAMPLE_NOTES = Array.from({ length: 37 }, (_, index) => 60 + index)
+const SOUND_FONT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
+
+/**
+ * Names must match the MIDI.js soundfont keys (flats, not sharps, not MIDI numbers).
+ * Passing `[60, 61, …]` makes audio-loader drop every buffer, and the empty player
+ * then replaces the synth with silence.
+ */
+export function soundfontNoteName(midi: number): string {
+  const pc = ((midi % 12) + 12) % 12
+  const octave = Math.floor(midi / 12) - 1
+  return `${SOUND_FONT_NAMES[pc]}${octave}`
+}
+
+const SAMPLE_NOTES = Array.from({ length: 37 }, (_, index) => soundfontNoteName(60 + index))
 
 export function readAudioPrefs(): AudioPrefs {
   try {
@@ -70,26 +88,41 @@ export class PianoEngine {
     this.onChange?.()
   }
 
-  unlock(): void {
+  /**
+   * Create the context and resume it. Call this from a click, keydown, or pointerdown.
+   * Hover timers must not call it: a context created outside a gesture stays suspended,
+   * and on Safari it may never start.
+   */
+  async unlock(): Promise<boolean> {
     const Context = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-    if (!Context) return
-    if (!this.ctx) {
-      this.ctx = new Context()
-      this.master = this.ctx.createGain()
-      this.master.gain.value = this.muted ? 0 : this.volume
-      const compressor = this.ctx.createDynamicsCompressor()
-      compressor.threshold.value = -12
-      compressor.knee.value = 18
-      compressor.ratio.value = 3
-      compressor.attack.value = 0.004
-      compressor.release.value = 0.18
-      this.master.connect(compressor)
-      compressor.connect(this.ctx.destination)
+    if (!Context) {
+      console.error('[piano] Web Audio is not available in this browser')
+      return false
     }
-    if (this.ctx.state !== 'running') void this.ctx.resume()
-    this.unlocked = true
+    try {
+      if (!this.ctx) {
+        this.ctx = new Context()
+        this.master = this.ctx.createGain()
+        this.master.gain.value = this.muted ? 0 : this.volume
+        const compressor = this.ctx.createDynamicsCompressor()
+        compressor.threshold.value = -12
+        compressor.knee.value = 18
+        compressor.ratio.value = 3
+        compressor.attack.value = 0.004
+        compressor.release.value = 0.18
+        this.master.connect(compressor)
+        compressor.connect(this.ctx.destination)
+      }
+      if (this.ctx.state !== 'running') await this.ctx.resume()
+    } catch (error) {
+      console.error('[piano] AudioContext.resume() failed', error)
+    }
+    const running = this.ctx?.state === 'running'
+    this.unlocked = Boolean(running)
+    if (!running) console.error('[piano] AudioContext is still', this.ctx?.state)
     this.emit()
-    this.loadSamples()
+    if (running) this.loadSamples()
+    return this.unlocked
   }
 
   currentTime(): number | null {
@@ -112,15 +145,18 @@ export class PianoEngine {
     this.emit()
   }
 
-  /** Short tonic for the circle. Replaces the previous preview without stopping a scale. */
+  /** Short tonic. No-ops until unlock() has left the context running. */
   playPreview(midi: number): void {
-    this.unlock()
+    if (this.ctx?.state !== 'running') return
     this.preview?.stop()
     this.preview = this.startNote(midi, 0.4, 0.62)
   }
 
   playScaleNote(midi: number, when: number, duration: number): void {
-    this.unlock()
+    if (this.ctx?.state !== 'running') {
+      console.error('[piano] skipped a scale note because audio is not running')
+      return
+    }
     const handle = this.startNote(midi, duration, 0.78, when)
     if (handle) this.active.push(handle)
   }
@@ -133,8 +169,8 @@ export class PianoEngine {
     this.active = []
     try {
       this.piano?.stop(when)
-    } catch {
-      /* already stopped */
+    } catch (error) {
+      console.error('[piano] could not stop the sample player', error)
     }
   }
 
@@ -172,12 +208,17 @@ export class PianoEngine {
         })
       })
       .then((piano) => {
+        const count = piano.buffers ? Object.keys(piano.buffers).length : 0
+        if (count < 12) throw new Error(`soundfont decoded ${count} notes`)
         this.piano = piano
         this.timbre = 'piano'
         this.loading = false
+        console.info(`[piano] acoustic grand ready (${count} notes)`)
         this.emit()
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        console.error('[piano] acoustic grand samples failed; using the synth', error)
+        this.piano = null
         this.loading = false
         this.timbre = 'synth'
         this.emit()
@@ -189,14 +230,48 @@ export class PianoEngine {
     const time = when ?? this.ctx.currentTime
     if (this.piano) {
       try {
-        return this.piano.play(midi, time, { duration, gain: velocity })
-      } catch {
-        this.piano = null
-        this.timbre = 'synth'
-        this.emit()
+        const played = this.piano.play(midi, time, { duration, gain: velocity })
+        if (played) return played
+        console.error('[piano] no sample for MIDI', midi, '— using the synth')
+      } catch (error) {
+        console.error('[piano] sample playback failed; using the synth', error)
       }
+      this.piano = null
+      this.timbre = 'synth'
+      this.emit()
     }
-    return this.playSynth(midi, time, duration, velocity)
+    try {
+      return this.playSynth(midi, time, duration, velocity)
+    } catch (error) {
+      console.error('[piano] synth voice failed; using a plain tone', error)
+      return this.playPlainTone(midi, time, duration, velocity)
+    }
+  }
+
+  private playPlainTone(midi: number, when: number, duration: number, velocity: number): NoteHandle {
+    const ctx = this.ctx!
+    const dest = this.master!
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(440 * 2 ** ((midi - 69) / 12), when)
+    const peak = Math.max(0.0002, 0.22 * velocity)
+    gain.gain.setValueAtTime(0.0001, when)
+    gain.gain.exponentialRampToValueAtTime(peak, when + 0.015)
+    gain.gain.exponentialRampToValueAtTime(0.0001, when + Math.max(0.12, duration))
+    osc.connect(gain)
+    gain.connect(dest)
+    osc.start(when)
+    osc.stop(when + duration + 0.05)
+    return {
+      stop: (at?: number) => {
+        try {
+          osc.stop((at ?? ctx.currentTime) + 0.02)
+        } catch {
+          /* already stopped */
+        }
+      },
+    }
   }
 
   private playSynth(midi: number, when: number, duration: number, velocity: number): NoteHandle {
