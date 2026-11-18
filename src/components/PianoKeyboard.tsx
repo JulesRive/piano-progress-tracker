@@ -1,6 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { isBlackPc, midiToScientific } from '../theory/music.ts'
 import { useAudio } from '../audio/AudioProvider.tsx'
+import { isBlackPc, midiToScientific } from '../theory/music.ts'
 
 const WHITE_WIDTH = 34
 const WHITE_HEIGHT = 122
@@ -25,7 +24,6 @@ interface PianoKeyboardProps {
 
 export function PianoKeyboard({ startMidi, endMidi, highlights, activeMidi }: PianoKeyboardProps) {
   const audio = useAudio()
-  const timer = useRef<number | null>(null)
   const byMidi = new Map(highlights.map((highlight) => [highlight.midi, highlight]))
   const midis: number[] = []
   for (let midi = startMidi; midi <= endMidi; midi += 1) midis.push(midi)
@@ -35,27 +33,10 @@ export function PianoKeyboard({ startMidi, endMidi, highlights, activeMidi }: Pi
   const width = leftPad + whites.length * WHITE_WIDTH + 1
   const height = LABEL_HEIGHT + WHITE_HEIGHT
 
-  useEffect(() => {
-    return () => {
-      if (timer.current !== null) window.clearTimeout(timer.current)
-    }
-  }, [])
-
-  const cancel = () => {
-    if (timer.current !== null) window.clearTimeout(timer.current)
-    timer.current = null
-  }
-
   const playNow = (midi: number) => {
-    cancel()
     void audio.unlock().then((running) => {
       if (running) audio.playPreview(midi)
     })
-  }
-
-  const schedule = (midi: number) => {
-    cancel()
-    timer.current = window.setTimeout(() => audio.playPreview(midi), 80)
   }
 
   return (
@@ -78,8 +59,6 @@ export function PianoKeyboard({ startMidi, endMidi, highlights, activeMidi }: Pi
             black={false}
             highlight={byMidi.get(midi)}
             active={midi === activeMidi}
-            onEnter={() => schedule(midi)}
-            onLeave={cancel}
             onPlay={() => playNow(midi)}
           />
         )
@@ -100,8 +79,6 @@ export function PianoKeyboard({ startMidi, endMidi, highlights, activeMidi }: Pi
               black
               highlight={byMidi.get(midi)}
               active={midi === activeMidi}
-              onEnter={() => schedule(midi)}
-              onLeave={cancel}
               onPlay={() => playNow(midi)}
             />
           )
@@ -144,8 +121,6 @@ function KeyShape({
   black,
   highlight,
   active,
-  onEnter,
-  onLeave,
   onPlay,
 }: {
   midi: number
@@ -156,8 +131,6 @@ function KeyShape({
   black: boolean
   highlight?: KeyHighlight
   active: boolean
-  onEnter: () => void
-  onLeave: () => void
   onPlay: () => void
 }) {
   const classes = ['key-shape', black ? 'key-black' : 'key-white']
@@ -177,13 +150,7 @@ function KeyShape({
       role="button"
       tabIndex={0}
       aria-label={name}
-      onPointerEnter={(event) => {
-        if (event.pointerType === 'mouse') onEnter()
-      }}
-      onPointerLeave={onLeave}
-      onPointerDown={(event) => {
-        if (event.pointerType !== 'mouse') onPlay()
-      }}
+      onPointerDown={() => onPlay()}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()

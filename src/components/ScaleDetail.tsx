@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAudio } from '../audio/AudioProvider.tsx'
 import { getPiano } from '../audio/engine.ts'
+import { activeNoteIndex, takeScheduleSlice, type ScheduleCursor } from '../audio/schedule.ts'
 import { todayISO, type ScaleEntry, type ScaleStatus } from '../progress/model.ts'
 import {
   fingerSequence,
@@ -57,6 +58,12 @@ export function ScaleDetail({ scaleId, entry, onStatus, onForm, onNotes, onPract
   const [playing, setPlaying] = useState(false)
   const [active, setActive] = useState<ActiveNote | null>(null)
   const tokenRef = useRef(0)
+  const timerRef = useRef<number | null>(null)
+  const bpmRef = useRef(bpm)
+
+  useEffect(() => {
+    bpmRef.current = bpm
+  }, [bpm])
 
   const run = scaleRun(scale.id, hand, form)
   const sequence = playbackTones(run)
@@ -66,12 +73,20 @@ export function ScaleDetail({ scaleId, entry, onStatus, onForm, onNotes, onPract
   useEffect(() => {
     return () => {
       tokenRef.current += 1
+      if (timerRef.current !== null) {
+        window.clearInterval(timerRef.current)
+        timerRef.current = null
+      }
       getPiano().stopAll()
     }
   }, [scaleId, hand, form])
 
   const stop = () => {
     tokenRef.current += 1
+    if (timerRef.current !== null) {
+      window.clearInterval(timerRef.current)
+      timerRef.current = null
+    }
     audio.stopAll()
     setPlaying(false)
     setActive(null)
@@ -82,32 +97,47 @@ export function ScaleDetail({ scaleId, entry, onStatus, onForm, onNotes, onPract
       if (!running) return
       stop()
       const token = tokenRef.current
+      const tones = sequence
       const start = audio.currentTime()
-      if (start === null) return
-      const interval = 60 / bpm
-      sequence.forEach((tone, index) => {
-        audio.playScaleNote(tone.midi, start + index * interval, interval * 0.92)
-      })
-      setPlaying(true)
+      if (start === null || tones.length === 0) return
+      let cursor: ScheduleCursor = { nextIndex: 0, lastTime: start, primed: false }
+      const starts: number[] = []
       let shown = -1
       const tick = () => {
         if (tokenRef.current !== token) return
         const now = audio.currentTime()
         if (now === null) return
-        const index = Math.floor((now - start) / interval + 0.001)
-        if (index >= sequence.length) {
-          setPlaying(false)
-          setActive(null)
-          return
+        const slice = takeScheduleSlice(cursor, tones.length, now, bpmRef.current)
+        cursor = slice.cursor
+        for (const note of slice.notes) {
+          const tone = tones[note.index]
+          audio.playScaleNote(tone.midi, note.when, note.duration)
+          starts[note.index] = note.when
         }
-        if (index !== shown) {
+        const index = activeNoteIndex(starts, now)
+        if (index !== shown && index >= 0) {
           shown = index
-          const tone = sequence[Math.max(0, index)]
+          const tone = tones[index]
           setActive({ index, midi: tone.midi, finger: tone.finger, label: tone.label, french: tone.french })
         }
-        window.requestAnimationFrame(tick)
+        const lastStart = starts[tones.length - 1]
+        if (cursor.nextIndex >= tones.length && lastStart !== undefined && now >= lastStart + 0.12) {
+          if (timerRef.current !== null) {
+            window.clearInterval(timerRef.current)
+            timerRef.current = null
+          }
+          setPlaying(false)
+          setActive(null)
+        }
       }
-      window.requestAnimationFrame(tick)
+      setPlaying(true)
+      tick()
+      const timer = window.setInterval(tick, 25)
+      if (tokenRef.current !== token) {
+        window.clearInterval(timer)
+        return
+      }
+      timerRef.current = timer
     })
   }
 
@@ -199,7 +229,7 @@ export function ScaleDetail({ scaleId, entry, onStatus, onForm, onNotes, onPract
             </button>
           </div>
           <p className="now-playing" aria-live="polite">
-            {active ? `${active.label} · ${active.french} · finger ${active.finger}` : 'Hover a key to hear it'}
+            {active ? `${active.label} · ${active.french} · finger ${active.finger}` : 'Click a key to hear it'}
           </p>
         </div>
         <PianoKeyboard
@@ -225,7 +255,11 @@ export function ScaleDetail({ scaleId, entry, onStatus, onForm, onNotes, onPract
             max={160}
             value={bpm}
             aria-label="Tempo in BPM"
-            onChange={(event) => setBpm(Number(event.target.value))}
+            onChange={(event) => {
+              const next = Number(event.target.value)
+              bpmRef.current = next
+              setBpm(next)
+            }}
           />
         </label>
       </div>
