@@ -27,11 +27,26 @@ export interface ResourceEntry {
   notes?: string
 }
 
+export interface QuizCategoryStats {
+  answered: number
+  correct: number
+}
+
+export interface QuizStats {
+  /** Most correct answers in one sitting. */
+  bestScore: number
+  bestStreak: number
+  answered: number
+  correct: number
+  byCategory: Record<string, QuizCategoryStats>
+}
+
 export interface ProgressFile {
-  version: 1
+  version: 2
   scales: Record<string, ScaleEntry>
   pieces: PieceEntry[]
   resources: ResourceEntry[]
+  quiz: QuizStats
 }
 
 export const PROGRESS_KEY = 'ppt.progress.v1'
@@ -102,12 +117,39 @@ function cleanResources(value: unknown): ResourceEntry[] {
   })
 }
 
+export function emptyQuiz(): QuizStats {
+  return { bestScore: 0, bestStreak: 0, answered: 0, correct: 0, byCategory: {} }
+}
+
+function cleanQuiz(value: unknown): QuizStats {
+  const quiz = emptyQuiz()
+  if (!isRecord(value)) return quiz
+  const bestScore = Number(value.bestScore)
+  const bestStreak = Number(value.bestStreak)
+  const answered = Number(value.answered)
+  const correct = Number(value.correct)
+  if (Number.isFinite(bestScore) && bestScore > 0) quiz.bestScore = Math.floor(bestScore)
+  if (Number.isFinite(bestStreak) && bestStreak > 0) quiz.bestStreak = Math.floor(bestStreak)
+  if (Number.isFinite(answered) && answered > 0) quiz.answered = Math.floor(answered)
+  if (Number.isFinite(correct) && correct > 0) quiz.correct = Math.min(quiz.answered, Math.floor(correct))
+  if (isRecord(value.byCategory)) {
+    for (const [category, stats] of Object.entries(value.byCategory)) {
+      if (!isRecord(stats)) continue
+      const categoryAnswered = Math.max(0, Math.floor(Number(stats.answered)) || 0)
+      const categoryCorrect = Math.min(categoryAnswered, Math.max(0, Math.floor(Number(stats.correct)) || 0))
+      if (categoryAnswered > 0) quiz.byCategory[category.slice(0, 40)] = { answered: categoryAnswered, correct: categoryCorrect }
+    }
+  }
+  return quiz
+}
+
 export function emptyProgress(): ProgressFile {
   const scales: Record<string, ScaleEntry> = {}
   for (const id of SCALE_IDS) scales[id] = { status: 'not-started' }
-  return { version: 1, scales, pieces: [], resources: [] }
+  return { version: 2, scales, pieces: [], resources: [], quiz: emptyQuiz() }
 }
 
+/** Accepts version 1 files (no quiz block) and anything newer that still has scales. */
 export function normalizeProgress(raw: unknown): ProgressFile {
   const base = emptyProgress()
   if (!isRecord(raw)) return base
@@ -117,7 +159,30 @@ export function normalizeProgress(raw: unknown): ProgressFile {
   }
   base.pieces = cleanPieces(raw.pieces)
   base.resources = cleanResources(raw.resources)
+  base.quiz = cleanQuiz(raw.quiz)
   return base
+}
+
+export function applyQuizAnswer(
+  stats: QuizStats,
+  category: string,
+  correct: boolean,
+  sessionCorrect: number,
+  streak: number,
+): QuizStats {
+  const byCategory = { ...stats.byCategory }
+  const previous = byCategory[category] ?? { answered: 0, correct: 0 }
+  byCategory[category] = {
+    answered: previous.answered + 1,
+    correct: previous.correct + (correct ? 1 : 0),
+  }
+  return {
+    bestScore: Math.max(stats.bestScore, sessionCorrect),
+    bestStreak: Math.max(stats.bestStreak, streak),
+    answered: stats.answered + 1,
+    correct: stats.correct + (correct ? 1 : 0),
+    byCategory,
+  }
 }
 
 export function statusOf(progress: ProgressFile, id: string): ScaleStatus {

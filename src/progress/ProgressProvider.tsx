@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
+  applyQuizAnswer,
   emptyProgress,
   loadBundledProgress,
   readStoredProgress,
@@ -16,6 +17,7 @@ interface ProgressContextValue {
   setStatus: (id: string, status: ScaleStatus) => void
   replaceProgress: (progress: ProgressFile) => void
   resetToBundled: () => Promise<void>
+  recordQuiz: (category: string, correct: boolean, sessionCorrect: number, streak: number) => void
 }
 
 const ProgressContext = createContext<ProgressContextValue | null>(null)
@@ -67,6 +69,13 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
         updateScale(id, patch)
       },
       replaceProgress: (next) => setProgress(next),
+      recordQuiz: (category, correct, sessionCorrect, streak) => {
+        setProgress((current) =>
+          current
+            ? { ...current, quiz: applyQuizAnswer(current.quiz, category, correct, sessionCorrect, streak) }
+            : current,
+        )
+      },
       resetToBundled: async () => {
         const bundled = await loadBundledProgress()
         setProgress(bundled)

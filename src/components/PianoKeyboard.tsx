@@ -87,9 +87,11 @@ export function PianoKeyboard({ startMidi, endMidi, highlights, activeMidi }: Pi
         const x = keyCenter(highlight.midi, whiteIndex, leftPad)
         return (
           <g key={`label-${highlight.midi}`} className="key-labels" aria-hidden="true">
-            <text className="finger-label" x={x} y={14}>
-              {highlight.finger}
-            </text>
+            {highlight.finger > 0 ? (
+              <text className="finger-label" x={x} y={14}>
+                {highlight.finger}
+              </text>
+            ) : null}
             {highlight.hint ? (
               <text className="hint-label" x={x} y={26}>
                 {highlight.hint}

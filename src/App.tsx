@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useAudio } from './audio/AudioProvider.tsx'
 import { CircleOfFifths } from './components/CircleOfFifths.tsx'
+import { QuizTab } from './components/QuizTab.tsx'
 import { ScaleDetail } from './components/ScaleDetail.tsx'
 import { SettingsDialog } from './components/SettingsDialog.tsx'
+import { TheoryTab } from './components/TheoryTab.tsx'
 import { useProgress } from './progress/ProgressProvider.tsx'
 import { countByStatus, nextUp, THEME_KEY, type ScaleStatus } from './progress/model.ts'
 import { frenchScaleTitle, getScale, scaleTitle } from './theory/music.ts'
 
-type Tab = 'scales' | 'pieces' | 'resources'
+type Tab = 'scales' | 'theory' | 'quiz' | 'pieces' | 'resources'
 type Theme = 'light' | 'dark'
 
 function initialTheme(): Theme {
@@ -114,6 +116,8 @@ export default function App() {
         {(
           [
             ['scales', 'Scales'],
+            ['theory', 'Theory'],
+            ['quiz', 'Quiz'],
             ['pieces', 'Pieces'],
             ['resources', 'Resources'],
           ] as const
@@ -164,6 +168,10 @@ export default function App() {
               />
             ) : null}
           </div>
+        ) : tab === 'theory' ? (
+          <TheoryTab />
+        ) : tab === 'quiz' ? (
+          <QuizTab />
         ) : (
           <section className="placeholder">
             <h2>{tab === 'pieces' ? 'Pieces' : 'Resources'}</h2>

@@ -17,6 +17,8 @@ UI text is in English. Note names also appear in French solfège (`do ré mi fa 
 
 On iPhone and iPad, Safari follows the hardware silent switch: if the ringer is muted, this page is muted too. Flip the switch to ring, turn the volume up, and tap **Enable sound** once. A context created from a hover, before any tap, cannot be started on Safari.
 
+The Theory tab is a cheat sheet for rebuilding major scales, reading key signatures, comparing the three minors, and using the circle of fifths. Note names are shown in English with French solfège (do, ré, mi, fa, sol, la, si; dièse, bémol). A few sections include a keyboard you can play. The Quiz tab asks randomized questions, filtered by category and by how many accidentals you want, and stores your best score and streak in the same progress file (version 2; older files without a quiz block still load).
+
 Pieces and resources are reserved in the data file and have placeholder tabs. They are not built out yet.
 
 ## Progress, on this browser and across devices

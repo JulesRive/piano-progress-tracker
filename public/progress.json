@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "scales": {
     "C": { "status": "mastered" },
     "Am": { "status": "mastered" },
@@ -27,5 +27,12 @@
     "Dm": { "status": "not-started" }
   },
   "pieces": [],
-  "resources": []
+  "resources": [],
+  "quiz": {
+    "bestScore": 0,
+    "bestStreak": 0,
+    "answered": 0,
+    "correct": 0,
+    "byCategory": {}
+  }
 }
