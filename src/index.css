@@ -302,6 +302,8 @@ p { margin: 0; }
 .tempo input { width: 100%; accent-color: var(--accent); }
 
 .finger-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; }
+.keyboard-tools .segmented { display: grid; grid-template-columns: 1fr 1fr; }
+.keyboard-tools .segmented button { white-space: normal; text-align: center; }
 .finger-card {
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -357,6 +359,10 @@ textarea { resize: vertical; }
 .pair-list { flex-direction: column; }
 .pair-list li { flex-direction: row; flex-wrap: wrap; gap: 0.35rem 0.7rem; align-items: baseline; }
 .pair-list em { color: var(--teal); font-style: normal; font-size: 0.82rem; }
+.hand-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem 0.8rem; width: 100%; }
+@media (max-width: 640px) {
+  .hand-pair { grid-template-columns: 1fr; }
+}
 .theory-picker { display: flex; flex-direction: column; gap: 0.35rem; color: var(--muted); font-size: 0.92rem; }
 .theory-picker select, .theory-card select {
   font: inherit;

@@ -240,7 +240,12 @@ function FingeringTips() {
             <strong>{scaleTitle(scale)}</strong>
             <span>{frenchScaleTitle(scale)}</span>
             <span>with {scaleTitle(getScale(scale.relativeId))}</span>
-            {sharesStandardMajorFingering(scale.id) ? <em>RH 123 1234</em> : null}
+            {sharesStandardMajorFingering(scale.id) ? (
+              <span className="hand-pair">
+                <em>Left hand (LH) 54321 321</em>
+                <em>Right hand (RH) 123 1234</em>
+              </span>
+            ) : null}
           </li>
         ))}
       </ul>

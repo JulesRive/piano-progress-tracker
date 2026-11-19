@@ -221,11 +221,11 @@ export function ScaleDetail({ scaleId, entry, onStatus, onForm, onNotes, onPract
       <div className="keyboard-block">
         <div className="keyboard-tools">
           <div className="segmented" role="radiogroup" aria-label="Hand">
-            <button type="button" role="radio" aria-checked={hand === 'rh'} className={hand === 'rh' ? 'is-on' : ''} onClick={() => setHand('rh')}>
-              Right hand
-            </button>
             <button type="button" role="radio" aria-checked={hand === 'lh'} className={hand === 'lh' ? 'is-on' : ''} onClick={() => setHand('lh')}>
-              Left hand
+              Left hand (LH)
+            </button>
+            <button type="button" role="radio" aria-checked={hand === 'rh'} className={hand === 'rh' ? 'is-on' : ''} onClick={() => setHand('rh')}>
+              Right hand (RH)
             </button>
           </div>
           <p className="now-playing" aria-live="polite">
@@ -265,9 +265,9 @@ export function ScaleDetail({ scaleId, entry, onStatus, onForm, onNotes, onPract
       </div>
 
       <div className="finger-grid">
-        {(['rh', 'lh'] as const).map((item) => (
+        {(['lh', 'rh'] as const).map((item) => (
           <div key={item} className={item === hand ? 'finger-card is-current' : 'finger-card'}>
-            <span>{item === 'rh' ? 'Right hand' : 'Left hand'}</span>
+            <span>{item === 'lh' ? 'Left hand (LH)' : 'Right hand (RH)'}</span>
             <p>
               <i>Up</i> {formatFingers(fingerSequence(scale.id, item, form, 'up'))}
             </p>
