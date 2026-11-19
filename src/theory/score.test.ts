@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { SCALES } from './music.ts'
-import { accidentalState, buildScore, vexKeySignature } from './score.ts'
+import { accidentalState, buildScore, ledgerLines, vexKeySignature } from './score.ts'
 
 describe('score engraving inputs', () => {
   it('maps every key signature VexFlow can draw', () => {
@@ -31,18 +31,30 @@ describe('score engraving inputs', () => {
     const events = buildScore('Am', 'melodic').events
     const fs = events.filter((event) => event.label.startsWith('F'))
     const gs = events.filter((event) => event.label.startsWith('G'))
-    expect(fs.map((event) => event.accidental)).toEqual(['#', null, 'n', null])
-    expect(gs.map((event) => event.accidental)).toEqual(['#', null, 'n', null])
+    expect(fs.map((event) => event.accidental)).toEqual(['#', 'n'])
+    expect(gs.map((event) => event.accidental)).toEqual(['#', 'n'])
     expect(events.at(-1)?.label).toBe('A')
+    expect(events).toHaveLength(15)
   })
 
-  it('writes the left hand an octave below the right, with both fingerings', () => {
+  it('keeps each hand inside two ledger lines, with the bass an octave lower', () => {
     const first = buildScore('C').events[0]
     expect(first.key).toBe('c/4')
     expect(first.lhKey).toBe('c/3')
     expect(first.rhFinger).toBe(1)
     expect(first.lhFinger).toBe(5)
     expect(first.lhMidi).toBe(first.midi - 12)
+    for (const scale of SCALES) {
+      const events = buildScore(scale.id, 'melodic').events
+      for (const event of events) {
+        expect(ledgerLines('treble', event.midi), `${scale.id} RH ${event.key}`).toBeLessThanOrEqual(2)
+        expect(ledgerLines('bass', event.lhMidi), `${scale.id} LH ${event.lhKey}`).toBeLessThanOrEqual(2)
+        expect(event.lhMidi).toBeLessThan(event.midi)
+      }
+    }
+    expect(buildScore('B').events[0].lhKey).toBe('b/2')
+    expect(buildScore('G').events[0].lhKey).toBe('g/2')
+    expect(buildScore('F#').events[0].lhKey).toBe('f/3')
   })
 
   it('tracks accidentals independently of pitch class spelling', () => {

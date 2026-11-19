@@ -88,8 +88,10 @@ export function ScaleDetail({ scaleId, entry, onStatus, onForm, onNotes, onPract
         timerRef.current = null
       }
       getPiano().stopAll()
+      setPlaying(false)
+      setActive(null)
     }
-  }, [scaleId, hand, form])
+  }, [scaleId, hand, form, notation])
 
   const stop = () => {
     tokenRef.current += 1
@@ -107,7 +109,14 @@ export function ScaleDetail({ scaleId, entry, onStatus, onForm, onNotes, onPract
       if (!running) return
       stop()
       const token = tokenRef.current
-      const tones = sequence
+      const tones = notation === 'score'
+        ? score.events.map((event) => ({
+            midi: hand === 'lh' ? event.lhMidi : event.midi,
+            label: event.label,
+            french: event.french,
+            finger: hand === 'lh' ? event.lhFinger : event.rhFinger,
+          }))
+        : sequence
       const start = audio.currentTime()
       if (start === null || tones.length === 0) return
       let cursor: ScheduleCursor = { nextIndex: 0, lastTime: start, primed: false }

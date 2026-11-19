@@ -26,16 +26,17 @@ export function ScaleScore({ keySignature, fifths, events, hand, activeIndex }: 
     const parent = host.current
     if (!parent) return
     parent.replaceChildren()
-    const width = Math.max(640, 120 + Math.abs(fifths) * 18 + events.length * 34)
+    const width = Math.max(720, 160 + Math.abs(fifths) * 20 + events.length * 52)
     const renderer = new Renderer(parent, Renderer.Backends.SVG)
-    renderer.resize(width, 300)
+    renderer.resize(width, 460)
     const context = renderer.getContext()
     context.setFillStyle('#241c14')
     context.setStrokeStyle('#241c14')
+    const staveOptions = { spacingBetweenLinesPx: 14, spaceAboveStaffLn: 6, spaceBelowStaffLn: 5 }
 
-    const treble = new Stave(8, 48, width - 16)
+    const treble = new Stave(10, 36, width - 20, staveOptions)
     treble.addClef('treble').addKeySignature(keySignature).setContext(context).draw()
-    const bass = new Stave(8, 160, width - 16)
+    const bass = new Stave(10, 250, width - 20, staveOptions)
     bass.addClef('bass').addKeySignature(keySignature).setContext(context).draw()
     const brace = new StaveConnector(treble, bass).setType('brace')
     const bar = new StaveConnector(treble, bass).setType('singleLeft')
@@ -60,6 +61,8 @@ export function ScaleScore({ keySignature, fifths, events, hand, activeIndex }: 
         element.classList.add('score-note')
         element.dataset.index = String(index)
         element.dataset.hand = which
+        element.dataset.midi = String(which === 'rh' ? events[index].midi : events[index].lhMidi)
+        element.setAttribute('aria-label', events[index].label)
         const play = () => {
           const midi = which === 'rh' ? events[index].midi : events[index].lhMidi
           void audioRef.current.unlock().then((running) => {
@@ -96,9 +99,9 @@ function noteFor(event: ScoreEvent, hand: Hand): StaveNote {
     clef: hand === 'rh' ? 'treble' : 'bass',
   })
   if (event.accidental) note.addModifier(new Accidental(event.accidental))
-  const finger = new Annotation(String(hand === 'rh' ? event.rhFinger : event.lhFinger)).setVerticalJustification(
-    hand === 'rh' ? Annotation.VerticalJustify.TOP : Annotation.VerticalJustify.BOTTOM,
-  )
+  const finger = new Annotation(String(hand === 'rh' ? event.rhFinger : event.lhFinger))
+    .setFont('Georgia', 18, 'bold')
+    .setVerticalJustification(hand === 'rh' ? Annotation.VerticalJustify.TOP : Annotation.VerticalJustify.BOTTOM)
   note.addModifier(finger)
   return note
 }
