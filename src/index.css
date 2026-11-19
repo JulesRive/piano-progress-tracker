@@ -119,7 +119,7 @@ p { margin: 0; }
   font-weight: 640;
 }
 
-.tabs { display: flex; gap: 0.4rem; margin-bottom: 1rem; }
+.tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; }
 .tab { padding: 0.45rem 0.9rem; color: var(--muted); }
 .tab.is-on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
@@ -294,6 +294,23 @@ p { margin: 0; }
 .finger-label { font-size: 12px; font-weight: 640; }
 .hint-label { font-size: 8px; fill: #6f6458; }
 
+.detail, .keyboard-block, .score-scroll { min-width: 0; }
+.score-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  background: #fbf7ef;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.2rem 0 0.4rem;
+}
+.score-scroll svg { display: block; }
+.score-scroll .score-note { cursor: pointer; }
+.score-scroll .score-note.is-playing .vf-notehead,
+.score-scroll .score-note.is-playing path {
+  fill: #c98312;
+  stroke: #8a5a10;
+}
+
 .transport { display: flex; flex-wrap: wrap; gap: 0.55rem; align-items: center; }
 .primary, .secondary { padding: 0.55rem 0.9rem; border-radius: 999px; }
 .primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 640; }
@@ -457,7 +474,7 @@ legend { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; 
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 @media (max-width: 960px) {
-  .scales-layout { grid-template-columns: 1fr; }
+  .scales-layout { grid-template-columns: minmax(0, 1fr); }
   .brand h1 { font-size: 1.4rem; }
   .brand p { display: none; }
   .detail-head h2 { font-size: 1.7rem; }

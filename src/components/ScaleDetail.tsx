@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useAudio } from '../audio/AudioProvider.tsx'
 import { getPiano } from '../audio/engine.ts'
 import { activeNoteIndex, takeScheduleSlice, type ScheduleCursor } from '../audio/schedule.ts'
@@ -18,6 +18,9 @@ import {
   type ScaleTone,
 } from '../theory/music.ts'
 import { PianoKeyboard, type KeyHighlight } from './PianoKeyboard.tsx'
+import { buildScore } from '../theory/score.ts'
+
+const ScaleScore = lazy(() => import('./ScaleScore.tsx').then((module) => ({ default: module.ScaleScore })))
 
 const STATUS_OPTIONS: { id: ScaleStatus; label: string }[] = [
   { id: 'not-started', label: 'Not started' },
@@ -54,6 +57,7 @@ export function ScaleDetail({ scaleId, entry, onStatus, onForm, onNotes, onPract
   const scale = getScale(scaleId)
   const form = entry.form ?? 'harmonic'
   const [hand, setHand] = useState<Hand>('rh')
+  const [notation, setNotation] = useState<'keys' | 'score'>(readNotation)
   const [bpm, setBpm] = useState(72)
   const [playing, setPlaying] = useState(false)
   const [active, setActive] = useState<ActiveNote | null>(null)
@@ -64,6 +68,12 @@ export function ScaleDetail({ scaleId, entry, onStatus, onForm, onNotes, onPract
   useEffect(() => {
     bpmRef.current = bpm
   }, [bpm])
+
+  useEffect(() => {
+    localStorage.setItem(NOTATION_KEY, notation)
+  }, [notation])
+
+  const score = useMemo(() => buildScore(scale.id, form), [scale.id, form])
 
   const run = scaleRun(scale.id, hand, form)
   const sequence = playbackTones(run)
@@ -228,16 +238,36 @@ export function ScaleDetail({ scaleId, entry, onStatus, onForm, onNotes, onPract
               Right hand (RH)
             </button>
           </div>
+          <div className="segmented" role="radiogroup" aria-label="Notation">
+            <button type="button" role="radio" aria-checked={notation === 'keys'} className={notation === 'keys' ? 'is-on' : ''} onClick={() => setNotation('keys')}>
+              Keys
+            </button>
+            <button type="button" role="radio" aria-checked={notation === 'score'} className={notation === 'score' ? 'is-on' : ''} onClick={() => setNotation('score')}>
+              Score
+            </button>
+          </div>
           <p className="now-playing" aria-live="polite">
-            {active ? `${active.label} · ${active.french} · finger ${active.finger}` : 'Click a key to hear it'}
+            {active ? `${active.label} · ${active.french} · finger ${active.finger}` : notation === 'score' ? 'Click a note to hear it' : 'Click a key to hear it'}
           </p>
         </div>
-        <PianoKeyboard
-          startMidi={run.ascending[0].midi}
-          endMidi={run.ascending[14].midi}
-          highlights={highlights}
-          activeMidi={active?.midi ?? null}
-        />
+        {notation === 'keys' ? (
+          <PianoKeyboard
+            startMidi={run.ascending[0].midi}
+            endMidi={run.ascending[14].midi}
+            highlights={highlights}
+            activeMidi={active?.midi ?? null}
+          />
+        ) : (
+          <Suspense fallback={<p className="theory-note">Preparing the staff…</p>}>
+            <ScaleScore
+              keySignature={score.keySignature}
+              fifths={score.fifths}
+              events={score.events}
+              hand={hand}
+              activeIndex={active?.index ?? null}
+            />
+          </Suspense>
+        )}
       </div>
 
       <div className="transport">
@@ -303,6 +333,12 @@ export function ScaleDetail({ scaleId, entry, onStatus, onForm, onNotes, onPract
       </div>
     </section>
   )
+}
+
+const NOTATION_KEY = 'ppt.notationView.v1'
+
+function readNotation(): 'keys' | 'score' {
+  return localStorage.getItem(NOTATION_KEY) === 'score' ? 'score' : 'keys'
 }
 
 function NoteRow({ title, tones, activeIndex }: { title: string; tones: ScaleTone[]; activeIndex: number | null }) {
